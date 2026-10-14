@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Komma — know what you play, and what you're playing over</title>
+<meta name="description" content="A menubar tuner for Mac that also hears the song you're playing along with. Western scales and Turkish maqam: 24 perdes, 53 commas.">
+<link rel="icon" href="img/favicon.png">
+<meta property="og:title" content="Komma for Mac">
+<meta property="og:description" content="Know what you play, and what you're playing over.">
+<meta property="og:image" content="img/icon.png">
+<style>
+  :root {
+    --bg: #111114;
+    --panel: #1c1c21;           /* the app's backdrop, so screenshots sit flush */
+    --text: rgba(255,255,255,.94);
+    --dim: rgba(255,255,255,.55);
+    --faint: rgba(255,255,255,.30);
+    --line: rgba(255,255,255,.09);
+    --fill: rgba(255,255,255,.05);
+    --green: #45db87;           /* Fit.inTune */
+    --yellow: #ffd142;          /* Fit.outOfTune */
+    --orange: #ff8f47;          /* Fit.outOfScale */
+    --pro: linear-gradient(90deg, #9e73ff, #ff6b9e);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { color-scheme: dark; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 17px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  html[lang="en"] [lang="tr"], html[lang="tr"] [lang="en"] { display: none !important; }
+  a { color: inherit; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.01em; text-decoration: none; }
+  .brand img { width: 30px; height: 30px; }
+  .langs { display: flex; gap: 2px; padding: 3px; background: var(--fill); border: 1px solid var(--line); border-radius: 9px; }
+  .langs button { all: unset; cursor: pointer; padding: 3px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--dim); }
+  .langs button[aria-pressed="true"] { background: rgba(255,255,255,.11); color: var(--text); }
+
+  .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: center; padding: 56px 0 96px; }
+  h1 { font-size: clamp(40px, 6vw, 68px); line-height: 1.02; letter-spacing: -.035em; font-weight: 800; }
+  h1 em { font-style: normal; color: var(--green); }
+  .lede { margin-top: 22px; font-size: 20px; color: var(--dim); max-width: 34ch; }
+  .shot { position: relative; }
+  .shot::before {               /* the state color glows behind the hero, like the app */
+    content: ""; position: absolute; inset: 8% 4%; background: var(--green); filter: blur(90px); opacity: .22; z-index: -1;
+  }
+  .shot img, .card img {
+    display: block; width: 100%; height: auto; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.5);
+  }
+
+  form { margin-top: 34px; max-width: 460px; }
+  .field { display: flex; gap: 8px; }
+  input[type=email], select {
+    flex: 1; min-width: 0; font: inherit; color: var(--text); background: var(--fill);
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; outline: none;
+  }
+  input[type=email]:focus, select:focus { border-color: rgba(255,255,255,.3); }
+  select { margin-top: 8px; width: 100%; appearance: none; color: var(--dim); }
+  .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+  .primary {
+    all: unset; cursor: pointer; background: #fff; color: #111; font-weight: 650;
+    padding: 12px 18px; border-radius: 10px; font-size: 16px;
+  }
+  .primary:hover { background: rgba(255,255,255,.88); }
+  .quiet { all: unset; cursor: pointer; color: var(--dim); font-weight: 600; padding: 12px 8px; font-size: 15px; }
+  .quiet:hover { color: var(--text); }
+  .note { margin-top: 12px; font-size: 14px; color: var(--faint); }
+  .done { margin-top: 34px; padding: 18px 20px; border-radius: 12px; background: rgba(69,219,135,.1); border: 1px solid rgba(69,219,135,.3); max-width: 460px; }
+  .error { color: var(--orange); }
+
+  section { padding: 88px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: clamp(30px, 4vw, 44px); letter-spacing: -.03em; line-height: 1.08; font-weight: 750; max-width: 22ch; }
+  .sub { margin-top: 14px; color: var(--dim); max-width: 56ch; }
+
+  .states { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; background: #000; border-radius: 99px; padding: 5px 13px 5px 10px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; }
+  .pill small { color: var(--dim); font-weight: 500; margin-left: 4px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 44px; }
+  .card { background: var(--fill); border: 1px solid var(--line); border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .card img { border-radius: 12px; box-shadow: none; }
+  .card h3 { font-size: 19px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+  .card p { color: var(--dim); font-size: 15px; }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; color: #fff; background: var(--pro); letter-spacing: .02em; }
+  .tag.free { background: rgba(255,255,255,.11); color: var(--dim); }
+
+  .prices { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 44px; max-width: 760px; }
+  .price { border: 1px solid var(--line); border-radius: 18px; padding: 26px; background: var(--fill); }
+  .price.pro { border-color: rgba(158,115,255,.45); background: linear-gradient(180deg, rgba(158,115,255,.1), transparent 60%); }
+  .amount { font-size: 40px; font-weight: 800; letter-spacing: -.03em; margin: 8px 0 2px; }
+  .amount s { font-size: 20px; color: var(--faint); font-weight: 600; margin-left: 8px; }
+  .price ul { list-style: none; padding: 0; margin-top: 16px; display: grid; gap: 8px; color: var(--dim); font-size: 15px; }
+  .price li::before { content: "✓"; color: var(--green); margin-right: 9px; font-weight: 700; }
+
+  .faq { margin-top: 36px; display: grid; gap: 10px; max-width: 760px; }
+  details { border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; background: var(--fill); }
+  summary { cursor: pointer; font-weight: 600; list-style: none; }
+  summary::after { content: "+"; float: right; color: var(--faint); }
+  details[open] summary::after { content: "–"; }
+  details p { margin-top: 10px; color: var(--dim); font-size: 15px; }
+
+  footer { padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--faint); font-size: 14px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; gap: 48px; padding-top: 28px; }
+    .grid, .prices { grid-template-columns: 1fr; }
+    .wrap { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#"><img src="img/icon.png" alt="">Komma</a>
+    <div class="langs" role="group" aria-label="Language">
+      <button data-set-lang="en">EN</button><button data-set-lang="tr">TR</button>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <h1>
+        <span lang="en">Know what you play, <em>and what you're playing over.</em></span>
+        <span lang="tr">Ne çaldığını <em>ve neyin üstüne çaldığını</em> bil.</span>
+      </h1>
+      <p class="lede">
+        <span lang="en">A tuner in your Mac's menubar that also hears the song. Play along with any track and see, note by note, whether you're in its key.</span>
+        <span lang="tr">Mac menü çubuğunda duran ve çalan şarkıyı da duyan bir akort aleti. Herhangi bir parçaya eşlik et, her notanın şarkının tonuna uyup uymadığını gör.</span>
+      </p>
+      <form id="waitlist" novalidate>
+        <div class="field">
+          <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" aria-label="Email">
+        </div>
+        <select name="segment" aria-label="What do you play?">
+          <option value="" data-en="What do you play? (optional)" data-tr="Ne çalıyorsun? (isteğe bağlı)">What do you play? (optional)</option>
+          <option value="producer" data-en="I produce in Logic / Ableton" data-tr="Logic / Ableton'da prodüksiyon yapıyorum">I produce in Logic / Ableton</option>
+          <option value="maqam" data-en="Maqam: bağlama, oud, kanun, ney…" data-tr="Makam: bağlama, ud, kanun, ney…">Maqam: bağlama, oud, kanun, ney…</option>
+          <option value="guitar" data-en="Guitar or bass" data-tr="Gitar veya bas">Guitar or bass</option>
+          <option value="voice" data-en="Voice" data-tr="Şan">Voice</option>
+          <option value="other" data-en="Something else" data-tr="Başka bir şey">Something else</option>
+        </select>
+        <div class="buttons">
+          <button class="primary" type="submit" name="intent" value="reserve">
+            <span lang="en">Reserve Pro at <span class="early"></span></span>
+            <span lang="tr">Pro'yu ayır · <span class="early"></span></span>
+          </button>
+          <button class="quiet" type="submit" name="intent" value="notify">
+            <span lang="en">Just tell me when it's out</span>
+            <span lang="tr">Sadece çıkınca haber ver</span>
+          </button>
+        </div>
+        <p class="note">
+          <span lang="en">No payment now. One email at launch with your early price, nothing else.</span>
+          <span lang="tr">Şimdi ödeme yok. Çıkışta erken erişim fiyatınla tek bir e-posta, başka bir şey değil.</span>
+        </p>
+        <p class="note error" id="error" hidden></p>
+      </form>
+      <div class="done" id="done" hidden>
+        <span lang="en">You're on the list. We'll write once, at launch.</span>
+        <span lang="tr">Listedesin. Çıkışta bir kez yazacağız.</span>
+      </div>
+    </div>
+    <div class="shot">
+      <img src="img/panel-play-along.png" width="680" height="688"
+           alt="Komma's Play Along panel: the song is in A minor, you're playing E, in key.">
+    </div>
+  </header>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2>
+      <span lang="en">The menubar tells you, without looking away.</span>
+      <span lang="tr">Gözünü ayırmadan menü çubuğu söyler.</span>
+    </h2>
+    <p class="sub">
+      <span lang="en">Green when you're in tune and in the scale, yellow when you're off pitch, orange when the note isn't in the key at all.</span>
+      <span lang="tr">Akortlu ve gamın içindeysen yeşil, perdeden kaçtıysan sarı, nota tonda hiç yoksa turuncu.</span>
+    </p>
+    <div class="states">
+      <span class="pill"><i style="background:var(--green)"></i>E · 5<small lang="en">in tune, 5th of A minor</small><small lang="tr">akortlu, La minörün 5. derecesi</small></span>
+      <span class="pill"><i style="background:var(--yellow)"></i>E · 5 +14¢<small lang="en">sharp</small><small lang="tr">tiz</small></span>
+      <span class="pill"><i style="background:var(--orange)"></i>Am · D♯<small lang="en">outside the key</small><small lang="tr">ton dışı</small></span>
+      <span class="pill"><i style="background:var(--green)"></i>Segâh<small lang="en">Hüzzam, Bolahenk</small><small lang="tr">Hüzzam, Bolahenk</small></span>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <img src="img/panel-tuner.png" width="680" height="784" alt="" loading="lazy">
+        <h3><span lang="en">Tuner with context</span><span lang="tr">Bağlamlı akort</span><span class="tag free" lang="en">FREE</span><span class="tag free" lang="tr">ÜCRETSİZ</span></h3>
+        <p lang="en">Note, cents and the note's degree in your scale. Pitch is measured to within a cent. A4 from 415 to 466 Hz, any input and channel, C-D-E or Do-Re-Mi.</p>
+        <p lang="tr">Nota, sent ve notanın gamdaki derecesi. Perde bir sent hassasiyetle ölçülür. A4 415–466 Hz arası, istediğin giriş ve kanal, C-D-E veya Do-Re-Mi.</p>
+      </div>
+      <div class="card">
+        <img src="img/panel-play-along.png" width="680" height="688" alt="" loading="lazy">
+        <h3><span lang="en">Play Along</span><span lang="tr">Birlikte Çal</span><span class="tag">PRO</span></h3>
+        <p lang="en">Komma listens to whatever your Mac is playing (YouTube, Spotify, a backing track, your DAW), finds the key and the chord, and judges every note you play against them.</p>
+        <p lang="tr">Komma Mac'te ne çalıyorsa onu dinler (YouTube, Spotify, backing track, DAW), tonu ve akoru bulur, çaldığın her notayı onlara göre değerlendirir.</p>
+      </div>
+      <div class="card">
+        <img src="img/panel-maqam.png" width="680" height="824" alt="" loading="lazy">
+        <h3><span lang="en">Maqam</span><span lang="tr">Makam</span><span class="tag">PRO</span></h3>
+        <p lang="en">The Arel-Ezgi-Uzdilek system: 24 perdes on the 53-comma grid. Pick a makam and ahenk, or let Komma find them in a recording (beta); see which perde you're on and how many commas off.</p>
+        <p lang="tr">Arel-Ezgi-Uzdilek sistemi: 53 koma ızgarasında 24 perde. Makamı ve ahengi seç ya da Komma kayıttan bulsun (beta); hangi perdede olduğunu ve kaç koma saptığını gör.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2><span lang="en">Pay once.</span><span lang="tr">Bir kez öde.</span></h2>
+    <p class="sub">
+      <span lang="en">No subscription. Pro is a single purchase on the Mac App Store.</span>
+      <span lang="tr">Abonelik yok. Pro, Mac App Store'da tek seferlik bir satın alma.</span>
+    </p>
+    <div class="prices">
+      <div class="price">
+        <strong>Komma</strong>
+        <div class="amount"><span lang="en">Free</span><span lang="tr">Ücretsiz</span></div>
+        <ul>
+          <li><span lang="en">Menubar tuner, cents and Hz</span><span lang="tr">Menü çubuğunda akort, sent ve Hz</span></li>
+          <li><span lang="en">Major, minor and pentatonic scales</span><span lang="tr">Majör, minör ve pentatonik gamlar</span></li>
+          <li><span lang="en">Always-on-top mini window</span><span lang="tr">Her zaman üstte mini pencere</span></li>
+          <li><span lang="en">⌃⌥P to start or pause listening</span><span lang="tr">⌃⌥P ile dinlemeyi başlat ya da duraklat</span></li>
+        </ul>
+      </div>
+      <div class="price pro">
+        <strong>Komma Pro</strong>
+        <div class="amount"><span class="early"></span><s>$24.99</s></div>
+        <span class="note" lang="en">Early price for the waitlist</span><span class="note" lang="tr">Bekleme listesine erken fiyat</span>
+        <ul>
+          <li><span lang="en">Play Along: key and chords of any audio on your Mac</span><span lang="tr">Birlikte Çal: Mac'teki her sesin tonu ve akorları</span></li>
+          <li><span lang="en">Maqam: 24 perdes, 53 commas, ahenk, makam detection (beta)</span><span lang="tr">Makam: 24 perde, 53 koma, ahenk, makam tespiti (beta)</span></li>
+          <li><span lang="en">Practice: drone, pitch graph, intonation by degree</span><span lang="tr">Pratik: dem, ses grafiği, dereceye göre entonasyon</span></li>
+          <li><span lang="en">Modes, harmonic and melodic minor, blues, bebop, Scala files</span><span lang="tr">Modlar, armonik ve melodik minör, blues, bebop, Scala dosyaları</span></li>
+          <li><span lang="en">Instrument profiles, B♭/E♭/F transposition, guitar neck</span><span lang="tr">Çalgı profilleri, Si♭/Mi♭/Fa transpozisyon, gitar sapı</span></li>
+          <li><span lang="en">MIDI out to your DAW</span><span lang="tr">DAW'a MIDI çıkışı</span></li>
+          <li><span lang="en">All Komma 1.x updates included</span><span lang="tr">Tüm Komma 1.x güncellemeleri dahil</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2><span lang="en">Questions</span><span lang="tr">Sorular</span></h2>
+    <div class="faq">
+      <details>
+        <summary><span lang="en">Does it record me or send audio anywhere?</span><span lang="tr">Beni kaydediyor mu, sesi bir yere gönderiyor mu?</span></summary>
+        <p lang="en">No. Everything is analysed on your Mac, nothing is recorded, and Komma collects no data.</p>
+        <p lang="tr">Hayır. Her şey Mac'inde analiz edilir, hiçbir şey kaydedilmez ve Komma veri toplamaz.</p>
+      </details>
+      <details>
+        <summary><span lang="en">Do I need headphones for Play Along?</span><span lang="tr">Birlikte Çal için kulaklık gerekiyor mu?</span></summary>
+        <p lang="en">Yes, for now. With speakers the microphone hears the song too, and that blurs which note is yours.</p>
+        <p lang="tr">Şimdilik evet. Hoparlörle mikrofon şarkıyı da duyar ve hangi notanın senin olduğu karışır.</p>
+      </details>
+      <details>
+        <summary><span lang="en">Which Macs?</span><span lang="tr">Hangi Mac'lerde çalışıyor?</span></summary>
+        <p lang="en">macOS Sonoma 14.2 or later, on Apple silicon and Intel.</p>
+        <p lang="tr">macOS Sonoma 14.2 veya sonrası; Apple silicon ve Intel.</p>
+      </details>
+      <details>
+        <summary><span lang="en">Which makams?</span><span lang="tr">Hangi makamlar var?</span></summary>
+        <p lang="en">Rast, Uşşak, Hicaz, Hüseynî, Saba, Segâh, Hüzzam, Kürdî and Nihâvend at launch, in Bolahenk, Kız and Mansur ahenk.</p>
+        <p lang="tr">Çıkışta Rast, Uşşak, Hicaz, Hüseynî, Saba, Segâh, Hüzzam, Kürdî ve Nihâvend; Bolahenk, Kız ve Mansur ahenginde.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <footer>
+    <span>© 2026 Komma</span>
+    <a href="privacy.html"><span lang="en">Privacy</span><span lang="tr">Gizlilik</span></a>
+  </footer>
+</div>
+
+<script>
+  // Where the waitlist form posts (Formspree, Basin, a Google Apps Script…): a JSON body with
+  // email, segment, intent, price, lang. Empty falls back to opening a mail draft.
+  const WAITLIST_URL = "";
+  const CONTACT = "hello@getkomma.com";
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+
+  // Language: saved choice, else the browser's.
+  function setLang(lang) {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-set-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.setLang === lang));
+    // <option> can't be hidden with CSS everywhere, so its text is swapped.
+    document.querySelectorAll("option[data-tr]").forEach(o => o.textContent = o.dataset[lang]);
+    store.set("lang", lang);
+  }
+  document.querySelectorAll("[data-set-lang]").forEach(b => b.onclick = () => setLang(b.dataset.setLang));
+  setLang(store.get("lang") || (navigator.language.toLowerCase().startsWith("tr") ? "tr" : "en"));
+
+  // Price test: each visitor keeps one early price, and it is sent with the signup.
+  let price = store.get("price");
+  if (price !== "14.99" && price !== "19.99") store.set("price", price = Math.random() < 0.5 ? "14.99" : "19.99");
+  document.querySelectorAll(".early").forEach(e => e.textContent = "$" + price);
+
+  const form = document.getElementById("waitlist");
+  const error = document.getElementById("error");
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    const email = form.email.value.trim();
+    if (!form.email.checkValidity() || !email) {
+      error.hidden = false;
+      error.textContent = document.documentElement.lang === "tr" ? "Geçerli bir e-posta yaz." : "Enter a valid email.";
+      form.email.focus();
+      return;
+    }
+    const entry = {
+      email, segment: form.segment.value, intent: event.submitter?.value || "notify",
+      price, lang: document.documentElement.lang,
+    };
+    if (!WAITLIST_URL) {
+      location.href = `mailto:${CONTACT}?subject=Komma waitlist&body=${encodeURIComponent(JSON.stringify(entry))}`;
+      return;
+    }
+    try {
+      const response = await fetch(WAITLIST_URL, {
+        method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(entry),
+      });
+      if (!response.ok) throw new Error(response.status);
+      form.hidden = true;
+      document.getElementById("done").hidden = false;
+    } catch {
+      error.hidden = false;
+      error.textContent = document.documentElement.lang === "tr"
+        ? `Kaydedilemedi. ${CONTACT} adresine yazabilirsin.` : `Couldn't save that. You can email ${CONTACT}.`;
+    }
+  });
+</script>
+</body>
+</html>
